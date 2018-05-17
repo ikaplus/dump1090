@@ -1,7 +1,8 @@
 PROGNAME=dump1090
 
 RTLSDR ?= yes
-BLADERF ?= yes
+BLADERF ?= no
+SOAPY ?= yes
 
 CPPFLAGS += -DMODES_DUMP1090_VERSION=\"$(DUMP1090_VERSION)\" -DMODES_DUMP1090_VARIANT=\"dump1090-fa\"
 
@@ -33,6 +34,13 @@ ifeq ($(BLADERF), yes)
   CPPFLAGS += -DENABLE_BLADERF
   CFLAGS += $(shell pkg-config --cflags libbladeRF)
   LIBS_SDR += $(shell pkg-config --libs libbladeRF)
+endif
+
+ifeq ($(SOAPY), yes)
+  SDR_OBJ += sdr_soapy.o
+  CPPFLAGS += -DENABLE_SOAPY
+  CFLAGS += $(shell pkg-config --cflags SoapySDR)
+  LIBS_SDR += $(shell pkg-config --libs SoapySDR)
 endif
 
 all: dump1090 view1090

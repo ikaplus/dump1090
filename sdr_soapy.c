@@ -41,12 +41,16 @@ static struct {
 
 void soapyShowHelp()
 {
-  printf("      soapy-specific options (use with --device-type bladerf)\n");
+  printf("      soapy-specific options (use with --device-type soapy)\n");
   printf("\n");
 }
 
 bool soapyHandleOption(int argc, char **argv, int *jptr)
 {
+  MODES_NOTUSED(argc);
+  MODES_NOTUSED(argv);
+  MODES_NOTUSED(jptr);
+  return false;
 }
 
 void soapyClose()
@@ -134,19 +138,17 @@ bool soapyOpen()
 static struct timespec thread_cpu;
 static unsigned timeouts = 0;
 
-static void *handle_soapy_samples(struct soapy *dev,
-                                    struct soapy_stream *stream,
-                                    struct soapy_metadata *meta,
+static void *handle_soapy_samples(  void *dev,
+                                    void *stream,
+                                    void *meta,
                                     void *samples,
                                     size_t num_samples,
                                     void *user_data)
 {
-    static uint64_t nextTimestamp = 0;
     static bool dropping = false;
-    uint32_t slen;
+    uint32_t slen = 0;
     unsigned block_duration;
     static uint64_t sampleCounter = 0;
-    uint16_t buffer[num_samples];
 
     MODES_NOTUSED(dev);
     MODES_NOTUSED(stream);
@@ -199,50 +201,6 @@ static void *handle_soapy_samples(struct soapy *dev,
     outbuf->length = num_samples / 1;
 
         Soapy.converter(samples, &outbuf->data[Modes.trailing_samples], num_samples, Soapy.converter_state, &outbuf->mean_level, &outbuf->mean_power);
-    //    Soapy.converter(samples, buffer, num_samples, Soapy.converter_state, &outbuf->mean_level, &outbuf->mean_power);
-
- #ifdef TOTO
-    // Matching filter
-    /*
-    for (int i = 0; i < num_samples; i++)
-      {
-	int val = buffer[i + 0];
-	val += buffer[i + 1];
-	val += buffer[i + 2];
-	val += buffer[i + 3];
-	val += buffer[i + 4];
-	val += buffer[i + 5];
-	val -= buffer[i + 6];
-	val -= buffer[i + 7];
-	val -= buffer[i + 8];
-	val -= buffer[i + 9];
-	val -= buffer[i + 10];
-	val -= buffer[i + 11];
-	val /= 6;
-	if (val > 65535)
-	  val = 65535;
-	if (val > 0)
-	  buffer[i] = val;
-	else
-	  buffer[i] = 0;
-      }
-    */
-    /*
-    FILE*f = fopen ("out", "wb");
-    fwrite (buffer, num_samples * 2, 1, f);
-    fclose (f);*/
-    // Decimation
-    for (int i = 0; i < num_samples; i++)
-      {
-	int val = buffer[i + 0];
-	/*	val += buffer[i + 1];
-	val += buffer[i + 2];
-	val += buffer[i + 3];
-	val += buffer[i + 4];
-	val /= 5;*/
-	outbuf->data[Modes.trailing_samples + (i / 1)] = val;
-      }
-#endif
     // Push the new data to the demodulation thread
     pthread_mutex_lock(&Modes.data_mutex);
 
@@ -266,10 +224,7 @@ void soapyRun()
         return;
     }
 
-    unsigned transfers = 7;
 
-    int status;
-    struct soapy_stream *stream = NULL;
     int16_t buffers[MODES_MAG_BUF_SAMPLES * 2];
     void *buffs[] = {buffers};
 
